@@ -10,11 +10,13 @@ PHP 5.4 and Linux 2.6 and redis 3.0.1
 ###Buy And Sell Ltc
 <code>
 $ php index.php cron trading buyltc
+
 $ php index.php cron trading selltc
 </code>
 ###Buy And Sell Btc
 <code>
 $ php index.php cron trading buybtc
+
 $ php index.php cron trading sellbtc
 </code>
 ###Manage Order
