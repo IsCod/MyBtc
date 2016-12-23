@@ -83,7 +83,7 @@ class Trading extends MY_Controller{
     */
     public function sellltc(){
         $is_price_order = $this->IsPlaceOrder('LTCCNY');
-        if(!$is_price_order['sell']) die("done\n");
+        // if(!$is_price_order['sell']) die("done\n");
 
         $this->load->model('getPirce_model');
         $price = $this->getPirce_model->ltc();
@@ -97,13 +97,14 @@ class Trading extends MY_Controller{
         if (count($redis->hGetAll('trans:sell:ltc')) > $this->max_order_num) die("order nums is max\n");
 
         $tran = $redis->lPop('trans:buy:ltc');
+   
         if (!$tran) die("no trans\n");
 
-        $tran = json_decode($tran);
+        $tran = unserialize($tran);
 
         //超过交易时间那么就止损
         if ($tran->avg_price > $price['sell'] && time() - $tran->date < 3600 * 12) {
-            $redis->rPush('trans:buy:ltc', json_encode($tran));
+            $redis->rPush('trans:buy:ltc', serialize($tran));
             die("price is small\n");
         }
 
@@ -116,9 +117,9 @@ class Trading extends MY_Controller{
 
         //订单结束
         if (is_int($sell_id) && $sell_id) {
-            $redis->hSet('trans:sell:ltc', $sell_id, json_encode($tran));
+            $redis->hSet('trans:sell:ltc', $sell_id, serialize($tran));
         }else{
-            $redis->rPop('trans:buy:ltc', json_encode($tran));
+            $redis->rPop('trans:buy:ltc', serialize($tran));
         }
 
         echo "done\n";
@@ -178,13 +179,14 @@ class Trading extends MY_Controller{
         if (count($redis->hGetAll('trans:sell:btc')) > $this->max_order_num) die("order nums is max\n");
 
         $tran = $redis->lPop('trans:buy:btc');
+
         if (!$tran) die("no trans\n");
     
-        $tran = json_decode($tran);
+        $tran = unserialize($tran);
 
         //超过交易时间那么就止损
-        if ($tran->avg_price > $price['sell'] && (time() - $tran->date) < $this->cancel_sell_order_time) {
-            $redis->rPush('trans:buy:btc', json_encode($tran));
+        if ($tran->avg_price > $price['sell'] && (time() - $tran->date) < 7200) {
+            $redis->rPush('trans:buy:btc', serialize($tran));
             die("price is small\n");
         }
 
@@ -197,9 +199,9 @@ class Trading extends MY_Controller{
 
         //订单结束
         if (is_int($sell_id) && $sell_id > 0) {
-            $redis->hSet('trans:sell:btc', $sell_id, json_encode($tran));
+            $redis->hSet('trans:sell:btc', $sell_id, serialize($tran));
         }else{
-            $redis->rPop('trans:buy:btc', json_encode($tran));
+            $redis->rPop('trans:buy:btc', serialize($tran));
         }
 
         echo "done\n";
@@ -225,12 +227,12 @@ class Trading extends MY_Controller{
                     //取消的订单
                     case 'cancelled':
                         if ($value->amount == 0 || $value->amount == $value->amount_original) continue;
-                        $redis->rPush('trans:buy:ltc', json_encode($value));
+                        $redis->rPush('trans:buy:ltc', serialize($value));
                         break;
 
                     //成交的订单
                     case 'closed':
-                        $redis->rPush('trans:buy:ltc', json_encode($value));
+                        $redis->rPush('trans:buy:ltc', serialize($value));
                         break;
 
                     //开放的订单
@@ -251,14 +253,14 @@ class Trading extends MY_Controller{
                 $info = $redis->hGet('trans:sell:ltc', $value->id);
                 if (!$info) continue;
 
-                $info = json_decode($info);
+                $info = unserialize($info);
 
                 switch ($value->status) {
                     //取消的订单
                     case 'cancelled':
                         if($value->amount_original != $value->amount && $value->amount > 0) $info->amount += $value->amount_original - $value->amount;//交易过的数量
 
-                        $redis->rPush('trans:buy:ltc', json_encode($info));
+                        $redis->rPush('trans:buy:ltc', serialize($info));
                         $redis->hDel('trans:sell:ltc', $value->id);
                         break;
 
@@ -266,7 +268,7 @@ class Trading extends MY_Controller{
                     case 'closed':
                         $redis->hDel('trans:sell:ltc', $value->id);
                         //只用作统计
-                        $redis->hSet('trans:sell:ltc:all:deal', $info->id, json_encode($info));
+                        // $redis->hSet('trans:sell:ltc:all:deal', $info->id, serialize($info));
                         break;
 
                     //开放的订单
@@ -283,6 +285,7 @@ class Trading extends MY_Controller{
         }
 
         foreach ($trans->order_btccny as $value) {
+
             //买订单处理
             if ($value->type == "bid") {
                 //非脚本下单和处理过的订单
@@ -292,12 +295,12 @@ class Trading extends MY_Controller{
                     //取消的订单
                     case 'cancelled':
                         if ($value->amount == 0 || $value->amount == $value->amount_original) continue;
-                        $redis->rPush('trans:buy:btc', json_encode($value));
+                        $redis->rPush('trans:buy:btc', serialize($value));
                         break;
 
                     //成交的订单
                     case 'closed':
-                        $redis->rPush('trans:buy:btc', json_encode($value));
+                        $redis->rPush('trans:buy:btc', serialize($value));
                         break;
 
                     //开放的订单
@@ -319,14 +322,14 @@ class Trading extends MY_Controller{
                 $info = $redis->hGet('trans:sell:btc', $value->id);
                 if (!$info) continue;
 
-                $info = json_decode($info);
+                $info = unserialize($info);
 
                 switch ($value->status) {
                     //取消的订单
                     case 'cancelled':
                         if($value->amount_original != $value->amount && $value->amount > 0) $info->amount += $value->amount_original - $value->amount;//交易过的数量
 
-                        $redis->rPush('trans:buy:btc', json_encode($info));
+                        $redis->rPush('trans:buy:btc', serialize($info));
                         $redis->hDel('trans:sell:btc', $value->id);
                         break;
 
@@ -334,7 +337,7 @@ class Trading extends MY_Controller{
                     case 'closed':
                         $redis->hDel('trans:sell:btc', $value->id);
                         //只用作统计
-                        $redis->hSet('trans:sell:btc:all:deal', $info->id, json_encode($info));
+                        // $redis->hSet('trans:sell:btc:all:deal', $info->id, serialize($info));
                         break;
 
                     //开放的订单
