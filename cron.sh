@@ -12,8 +12,8 @@ function sell()
 
 function buy()
 {
-	/usr/local/php/bin/php /Users/iscod/Data/MyBtc/index.php cron trading buyltc > /dev/null 2>&1
 	/usr/local/php/bin/php /Users/iscod/Data/MyBtc/index.php cron trading buybtc > /dev/null 2>&1
+	/usr/local/php/bin/php /Users/iscod/Data/MyBtc/index.php cron trading buyltc > /dev/null 2>&1
 }
 
 #每分钟内执行次数

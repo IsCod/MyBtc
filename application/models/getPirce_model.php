@@ -5,7 +5,7 @@
 
 class getPirce_model extends CI_Model {
 
-    private $market_depth_num = 6;//获取深度
+    private $market_depth_num = 20;//获取深度
 
     /**
     *获取ltc出售与买入价格
@@ -76,8 +76,6 @@ class getPirce_model extends CI_Model {
 
         $ask_bid_market = $depth['ask']['all_amount'] / $depth['bid']['all_amount'];
 
-        var_dump($return);
-
         //买单大于卖单5倍
         if ($ask_bid_market && $ask_bid_market < 1) {
             $return['sell'] += 0.01 * ( 1/$ask_bid_market - 10);
@@ -112,7 +110,7 @@ class getPirce_model extends CI_Model {
 
         $return['bid'] = $market->market_depth_btccny->bid[0]->price;
         $return['ask'] = $market->market_depth_btccny->ask[0]->price;
-        $market_depth_num = 6;
+        $market_depth_num = 20;
 
         //获取市场深度
         $market = $btcAPI->getMarketDepth($market_depth_num, 'BTCCNY');
@@ -122,14 +120,8 @@ class getPirce_model extends CI_Model {
         $ask_max_amount = $bid_max_amount = 0;
         foreach ($market->market_depth->ask as $key => $value) {
             if ($key == 0) $depth['ask']['min_price'] = $value->price;
-            if ($key == 3) $depth['ask']['midd_price'] = $value->price;
             if ($key == ($market_depth_num -1)) $depth['ask']['max_price'] = $value->price;
 
-            if ($value->amount > $ask_max_amount) {
-                $ask_max_amount = $value->amount;
-                $depth['ask']['max_amount'] = $value->amount;
-                $depth['ask']['max_amount_price'] = $value->price;
-            }
             $depth['ask']['all_amount'] += $value->amount;
             $depth['ask']['all_amount_cost'] += $value->price * $value->amount;
         }
@@ -137,14 +129,8 @@ class getPirce_model extends CI_Model {
         foreach ($market->market_depth->bid as $key => $value) {
             
             if ($key == 0) $depth['bid']['max_price'] = $value->price;
-            if ($key == 3) $depth['bid']['midd_price'] = $value->price;
             if ($key == ($market_depth_num -1)) $depth['bid']['min_price'] = $value->price;
 
-            if ($value->amount > $bid_max_amount) {
-                $bid_max_amount = $value->amount;
-                $depth['bid']['max_amount'] = $value->amount;
-                $depth['bid']['max_amount_price'] = $value->price;
-            }
             $depth['bid']['all_amount'] += $value->amount;
             $depth['bid']['all_amount_cost'] += $value->price * $value->amount;
         }
@@ -152,17 +138,19 @@ class getPirce_model extends CI_Model {
         $depth['ask']['market_midd_price'] = $depth['ask']['all_amount_cost'] / $depth['ask']['all_amount'];
         $depth['bid']['market_midd_price'] = $depth['bid']['all_amount_cost'] / $depth['bid']['all_amount'];
 
-
-        $return['buy'] = ($depth['bid']['min_price'] + $return['bid']) / 2;
-        $return['sell'] = ($depth['ask']['max_price'] + $return['ask'] ) /2;
+        // bid买 ask卖
+        $return['buy'] = ($depth['bid']['market_midd_price'] + $return['bid']) / 2;
+        $return['sell'] = ($depth['ask']['market_midd_price'] + $return['ask'] ) /2;
+        // $return['buy'] = $depth['bid']['market_midd_price'];
+        // $return['sell'] = $depth['ask']['market_midd_price'];
 
         $ask_bid_market = $depth['ask']['all_amount'] / $depth['bid']['all_amount'];
 
         //买单大于卖单5倍
         if ($ask_bid_market && $ask_bid_market < 1) {
-            $return['sell'] += 0.05/$ask_bid_market;
+            $return['buy'] += 0.05*$ask_bid_market;
+            $return['sell'] += 0.1/$ask_bid_market;
         }
-
         //卖单大于买单5倍
         if ($ask_bid_market && $ask_bid_market > 1) {
             $return['buy'] -= 0.1*$ask_bid_market;
@@ -172,6 +160,10 @@ class getPirce_model extends CI_Model {
         //买单大于当前市场的最高价格以最高价格买进
         if ($return['buy'] > $return['bid']) $return['buy'] = $return['bid'];
         if ($return['sell'] < $return['ask']) $return['sell'] = $return['ask'];
+
+        //交易量过大时，适当增加比例
+        $return['buy'] = $return['buy'] - $depth['ask']['all_amount'] * abs($return['bid'] - $return['buy']) / 100;
+        $return['sell'] = $return['sell'] + $depth['bid']['all_amount'] * abs($return['sell'] - $return['ask']) / 100;
 
         $return['buy'] = round($return['buy'], 2);
         $return['sell'] = round($return['sell'], 2);
