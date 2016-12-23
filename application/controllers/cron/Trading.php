@@ -16,20 +16,17 @@ class Trading extends MY_Controller{
         date_default_timezone_set('Asia/Shanghai');
     }
 
-    private $amount = 10;//每单购买的ltc
     private $max_order_num = 1;//最多同时在量的订单
     private $max_deal_num = 1;//未处理订单数大于该值不进行买入
     private $min_balance_cny_num = 1300;//账户中保持最低人民币
-    private $cancel_order_time = 3600;//订单多长时间没有交易就取消(默认)
-    private $cancel_sell_order_time = 7200;//取消买订单的时间
 
 
      //是否下订单
     public function IsPlaceOrder($type = 'all'){
         $result = array('buy' => TRUE, 'sell' => TRUE);
 
-        if ($type == "LTCCNY") $result = array('buy' => TRUE, 'sell' => TRUE);
-        if ($type == "BTCCNY") $result = array('buy' => FALSE, 'sell' => TRUE);
+        if ($type == "LTCCNY") $result = array('buy' => FALSE, 'sell' => FALSE);
+        if ($type == "BTCCNY") $result = array('buy' => TRUE, 'sell' => TRUE);
 
         // //这里严重影响性能
         // include_once APPPATH . '/third_party/btcchina-api/BTCChinaLibrary.php';
@@ -61,15 +58,15 @@ class Trading extends MY_Controller{
 
         //已经买入的订单
         $redis = Rcache::init();
-        if ($redis->sCard('Trading:Ltc:OrderIds')) die("order nums is max\n");
+        if ($redis->sCard('Trading:Ltc:OrderIds') > 1) die("order nums is max\n");
 
         //未处理的订单数量
         if($redis->lSize('trans:buy:ltc') > $this->max_deal_num) die("waiting deal order num is max\n");
 
         $orderId = 0;
 
-        $amount = 1 * rand(80, 120) /100;
-        $amount = 0.001;
+        $amount = 10 * rand(80, 120) /100;
+
         $price['buy'] = $price['ask'];
         $orderId = $btcAPI->placeOrder($price['buy'], $amount, 'LTCCNY');
 
@@ -105,7 +102,7 @@ class Trading extends MY_Controller{
         $tran = json_decode($tran);
 
         //超过交易时间那么就止损
-        if ($tran->avg_price > ($price['sell'] && (time() - $tran->date) < $this->cancel_sell_order_time * 12)) {
+        if ($tran->avg_price > $price['sell'] && time() - $tran->date < 3600 * 12) {
             $redis->rPush('trans:buy:ltc', json_encode($tran));
             die("price is small\n");
         }
@@ -145,15 +142,16 @@ class Trading extends MY_Controller{
         $redis = Rcache::init();
 
         //当前开放的订单
-        if ($redis->sCard('Trading:Btc:OrderIds')) die("order nums is max\n");
+        if ($redis->sCard('Trading:Btc:OrderIds') > 1) die("order nums is max\n");
 
         //未处理的订单数量
         if($redis->lSize('trans:buy:btc') > $this->max_deal_num) die("waiting deal order num is max\n");
 
-        $amount = 0.05 * rand(80, 120) /100;
+        $amount = 0.06 * rand(80, 120) /100;
 
         $amount = round($amount, 4);
         $orderId = 0;
+
         $orderId = $btcAPI->placeOrder($price['buy'], $amount, 'BTCCNY');
 
         if (!is_int($orderId) && !$orderId) die("error: " . var_dump($orderId));
@@ -198,7 +196,7 @@ class Trading extends MY_Controller{
         $sell_id = $btcAPI->placeOrder($price['sell'], -round(($amount  * 100)/100 , 4), 'BTCCNY');
 
         //订单结束
-        if (is_int($sell_id) && $sell_id) {
+        if (is_int($sell_id) && $sell_id > 0) {
             $redis->hSet('trans:sell:btc', $sell_id, json_encode($tran));
         }else{
             $redis->rPop('trans:buy:btc', json_encode($tran));
@@ -237,7 +235,7 @@ class Trading extends MY_Controller{
 
                     //开放的订单
                     case 'open':
-                        if((time() - $value->date) > 90) $btcAPI->cancelOrder((int)$value->id, 'LTCCNY');
+                        if((time() - $value->date) > 3600) $btcAPI->cancelOrder((int)$value->id, 'LTCCNY');
                         break;
 
                     default:
@@ -273,7 +271,7 @@ class Trading extends MY_Controller{
 
                     //开放的订单
                     case 'open':
-                        if((time() - $value->date) > 120) $btcAPI->cancelOrder((int)$value->id, 'LTCCNY');
+                        if((time() - $value->date) > 3600) $btcAPI->cancelOrder((int)$value->id, 'LTCCNY');
                         break;
 
                     default:
@@ -366,6 +364,16 @@ class Trading extends MY_Controller{
         $redis->delete('trans:buy:ltc');
         $redis->delete('trans:sell:ltc');
         $redis->delete('Trading:Btc:OrderIds');
+        $redis->delete('trans:sell:ltc:all:deal');
+        echo "done\n";
+    }
+
+    /**
+    *删除统计
+    */
+    public function deleteDeal(){
+        $redis = Rcache::init();
+        $redis->delete('trans:sell:btc:all:deal');
         $redis->delete('trans:sell:ltc:all:deal');
         echo "done\n";
     }
