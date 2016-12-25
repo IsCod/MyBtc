@@ -158,7 +158,7 @@ class Trading extends MY_Controller{
 
         $amount = 0.06 * rand(80, 120) /100;
         $amount = round($amount, 4);
-        $price['buy'] = 100;
+
         $orderId = 0;
         $orderId = $btcAPI->placeOrder($price['buy'], $amount, 'BTCCNY');
 
