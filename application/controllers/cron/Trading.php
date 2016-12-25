@@ -48,6 +48,10 @@ class Trading extends MY_Controller{
         $is_price_order = $this->IsPlaceOrder('LTCCNY');
         if(!$is_price_order['buy']) die("done\n");
 
+        //当前开放的订单
+        $openOrders = $this->openOrders('LTCCNY');
+        if (count($openOrders['bid']) >= $this->max_order_num) die("order nums is max\n");
+
         //加载BtcChinaApi
         include_once APPPATH . '/third_party/btcchina-api/BTCChinaLibrary.php';
         $btcAPI = new BTCChinaAPI();
@@ -131,6 +135,10 @@ class Trading extends MY_Controller{
         $is_price_order = $this->IsPlaceOrder('BTCCNY');
         if(!$is_price_order['buy']) die("done\n");
 
+        //当前开放的订单
+        $openOrders = $this->openOrders('BTCCNY');
+        if (count($openOrders['bid']) >= $this->max_order_num) die("order nums is max\n");
+
         include_once APPPATH . '/third_party/btcchina-api/BTCChinaLibrary.php';
         $btcAPI = new BTCChinaAPI();
 
@@ -143,19 +151,18 @@ class Trading extends MY_Controller{
         $redis = Rcache::init();
 
         //当前开放的订单
-        if ($redis->sCard('Trading:Btc:OrderIds') > 1) die("order nums is max\n");
+        if ($redis->sCard('Trading:Btc:OrderIds') > 0) die("order nums is max\n");
 
         //未处理的订单数量
-        if($redis->lSize('trans:buy:btc') > $this->max_deal_num) die("waiting deal order num is max\n");
+        if($redis->lSize('trans:buy:btc') + count($redis->hGetAll('trans:sell:btc')) > $this->max_deal_num) die("waiting deal order num is max\n");
 
         $amount = 0.06 * rand(80, 120) /100;
-
         $amount = round($amount, 4);
+        $price['buy'] = 100;
         $orderId = 0;
-
         $orderId = $btcAPI->placeOrder($price['buy'], $amount, 'BTCCNY');
 
-        if (!is_int($orderId) && !$orderId) die("error: " . var_dump($orderId));
+        if (!is_int($orderId) || $orderId < 1) die("error: " . var_dump($orderId));
 
         $redis->sAdd('Trading:Btc:OrderIds', $orderId);
 
@@ -185,7 +192,7 @@ class Trading extends MY_Controller{
         $tran = unserialize($tran);
 
         //超过交易时间那么就止损
-        if ($tran->avg_price > $price['sell'] && (time() - $tran->date) < 7200) {
+        if ($tran->avg_price > $price['sell'] && (time() - $tran->date) < 3600) {
             $redis->rPush('trans:buy:btc', serialize($tran));
             die("price is small\n");
         }
@@ -260,7 +267,7 @@ class Trading extends MY_Controller{
                     case 'cancelled':
                         if($value->amount_original != $value->amount && $value->amount > 0) $info->amount += $value->amount_original - $value->amount;//交易过的数量
 
-                        $redis->rPush('trans:buy:ltc', serialize($info));
+                        if($info->amount > 0) $redis->rPush('trans:buy:ltc', serialize($info));
                         $redis->hDel('trans:sell:ltc', $value->id);
                         break;
 
@@ -329,7 +336,7 @@ class Trading extends MY_Controller{
                     case 'cancelled':
                         if($value->amount_original != $value->amount && $value->amount > 0) $info->amount += $value->amount_original - $value->amount;//交易过的数量
 
-                        $redis->rPush('trans:buy:btc', serialize($info));
+                        if($info->amount > 0) $redis->rPush('trans:buy:btc', serialize($info));
                         $redis->hDel('trans:sell:btc', $value->id);
                         break;
 
@@ -355,9 +362,32 @@ class Trading extends MY_Controller{
         echo "done\n";
     }
 
+    /**
+    * 当前开放订单信息
+    *@param $type LTCCNY || BTCCNY || LTCCNY
+    *@param return array('ask' => array(), 'bid' => array())
+    */
+    public function openOrders($type = 'LTCCNY'){
+        $return = array('ask' => array(), 'bid' => array());
+        include_once APPPATH . '/third_party/btcchina-api/BTCChinaLibrary.php';
+        $btcAPI = new BTCChinaAPI();
+        $orders = $btcAPI->getOrders(true, $type);
+
+        foreach ($orders->order as $key => $value) {
+            if($value->type == 'ask'){
+                $return['ask'][] = $value;
+            }
+            if ($value->type == 'bid') {
+                $return['bid'][] = $value;
+            }
+        }
+
+        return $return;
+    }
+
     //谨慎操作
     public function reverse(){
-        die("Warning!!!!!! \nAre you sure?\nPlease amend file!\n");
+        // die("Warning!!!!!! \nAre you sure?\nPlease amend file!\n");
         $redis = Rcache::init();
         $redis->delete('trans:buy:btc');
         $redis->delete('trans:sell:btc');
