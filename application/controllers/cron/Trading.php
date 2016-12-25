@@ -56,8 +56,8 @@ class Trading extends MY_Controller{
         include_once APPPATH . '/third_party/btcchina-api/BTCChinaLibrary.php';
         $btcAPI = new BTCChinaAPI();
 
-        $this->load->model('getPirce_model');
-        $price = $this->getPirce_model->ltc();
+        $this->load->model('GetPirce_model');
+        $price = $this->GetPirce_model->Ltc();
         if (!$price || !isset($price['buy'])) die('error: get price');
 
         //已经买入的订单
@@ -89,8 +89,8 @@ class Trading extends MY_Controller{
         $is_price_order = $this->IsPlaceOrder('LTCCNY');
         if(!$is_price_order['sell']) die("done\n");
 
-        $this->load->model('getPirce_model');
-        $price = $this->getPirce_model->ltc();
+        $this->load->model('GetPirce_model');
+        $price = $this->GetPirce_model->Ltc();
         if (!$price || !isset($price['sell'])) die('error: get price');
 
         include_once APPPATH . '/third_party/btcchina-api/BTCChinaLibrary.php';
@@ -143,8 +143,8 @@ class Trading extends MY_Controller{
         $btcAPI = new BTCChinaAPI();
 
         //加载BtcChinaApi
-        $this->load->model('getPirce_model');
-        $price = $this->getPirce_model->btc();
+        $this->load->model('GetPirce_model');
+        $price = $this->GetPirce_model->Btc();
         if (!$price || !isset($price['buy'])) die('error: get price');
 
         //已经买入的订单
@@ -177,8 +177,8 @@ class Trading extends MY_Controller{
         include_once APPPATH . '/third_party/btcchina-api/BTCChinaLibrary.php';
         $btcAPI = new BTCChinaAPI();
 
-        $this->load->model('getPirce_model');
-        $price = $this->getPirce_model->btc();
+        $this->load->model('GetPirce_model');
+        $price = $this->GetPirce_model->Btc();
         if (!$price || !isset($price['sell'])) die('error: get price');
 
         $redis = Rcache::init();
