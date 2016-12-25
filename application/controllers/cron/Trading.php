@@ -267,7 +267,7 @@ class Trading extends MY_Controller{
                     case 'cancelled':
                         if($value->amount_original != $value->amount && $value->amount > 0) $info->amount += $value->amount_original - $value->amount;//交易过的数量
 
-                        if($info->amount != $value->amount_original) $redis->rPush('trans:buy:ltc', serialize($info));
+                        if($info->amount < $value->amount_original) $redis->rPush('trans:buy:ltc', serialize($info));
                         $redis->hDel('trans:sell:ltc', $value->id);
                         break;
 
@@ -336,7 +336,7 @@ class Trading extends MY_Controller{
                     case 'cancelled':
                         if($value->amount_original != $value->amount && $value->amount > 0) $info->amount += $value->amount_original - $value->amount;//交易过的数量
 
-                        if($info->amount != $value->amount_original) $redis->rPush('trans:buy:btc', serialize($info));
+                        if($info->amount < $value->amount_original) $redis->rPush('trans:buy:btc', serialize($info));
                         $redis->hDel('trans:sell:btc', $value->id);
                         break;
 
