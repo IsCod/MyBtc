@@ -87,7 +87,7 @@ class Trading extends MY_Controller{
     */
     public function sellltc(){
         $is_price_order = $this->IsPlaceOrder('LTCCNY');
-        // if(!$is_price_order['sell']) die("done\n");
+        if(!$is_price_order['sell']) die("done\n");
 
         $this->load->model('getPirce_model');
         $price = $this->getPirce_model->ltc();
