@@ -123,7 +123,7 @@ class Trading extends MY_Controller{
         if (is_int($sell_id) && $sell_id) {
             $redis->hSet('trans:sell:ltc', $sell_id, serialize($tran));
         }else{
-            $redis->rPop('trans:buy:ltc', serialize($tran));
+            $redis->rPush('trans:buy:ltc', serialize($tran));
         }
 
         echo "done\n";
@@ -208,7 +208,7 @@ class Trading extends MY_Controller{
         if (is_int($sell_id) && $sell_id > 0) {
             $redis->hSet('trans:sell:btc', $sell_id, serialize($tran));
         }else{
-            $redis->rPop('trans:buy:btc', serialize($tran));
+            $redis->rPush('trans:buy:btc', serialize($tran));
         }
 
         echo "done\n";
