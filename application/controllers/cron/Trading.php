@@ -151,7 +151,7 @@ class Trading extends MY_Controller{
 
         $orderId = 0;
         //先买策略
-        if ($redis->sCard('Trading:Btc:OrderIds') < 1 && $redis->lSize('trans:buy:btc') + count($redis->hGetAll('trans:sell:btc')) < $this->max_deal_num) {
+        if ($redis->sCard('Trading:Btc:OrderIds') < 1 && ($redis->lSize('trans:buy:btc') + count($redis->hGetAll('trans:sell:btc'))) < $this->max_deal_num) {
             $amount = 0.06 * rand(80, 120) /100;
             $amount = round($amount * $this->BuySellPro, 4);
 
@@ -244,7 +244,7 @@ class Trading extends MY_Controller{
         }
 
         //先卖策略
-        if ($redis->sCard('Reverse:Trading:Btc:OrderIds') < 1 && $redis->lSize('reverse:trans:sell:btc') + count($redis->hGetAll('reverse:trans:buy:btc')) < $this->max_deal_num) {
+        if ($redis->sCard('Reverse:Trading:Btc:OrderIds') < 1 && ($redis->lSize('reverse:trans:sell:btc') + count($redis->hGetAll('reverse:trans:buy:btc'))) < $this->max_deal_num) {
 
             $amount = 0.06 * rand(80, 120) /100;
             $amount = round($amount / $this->BuySellPro, 4);
@@ -402,6 +402,8 @@ class Trading extends MY_Controller{
                             break;
                     }
                 }
+
+                if (!$redis->sIsMember('Trading:Btc:OrderIds' , $value->id) && !$info) if((time() - $value->date) > 90) $btcAPI->cancelOrder((int)$value->id, 'BTCCNY');
             }
 
             //卖订单处理
@@ -465,6 +467,8 @@ class Trading extends MY_Controller{
 
                     if ($value->status != "open") $redis->sRem('Reverse:Trading:Btc:OrderIds', $value->id);
                 }
+
+                if (!$info && !$redis->sIsMember('Reverse:Trading:Btc:OrderIds' , $value->id)) if((time() - $value->date) > 90) $btcAPI->cancelOrder((int)$value->id, 'BTCCNY');
             }
         }
 
