@@ -403,7 +403,9 @@ class Trading extends MY_Controller{
                     }
                 }
 
-                if (!$redis->sIsMember('Trading:Btc:OrderIds' , $value->id) && !$info) if((time() - $value->date) > 90) $btcAPI->cancelOrder((int)$value->id, 'BTCCNY');
+                if ($value->status == "open" && (time() - $value->date) > 90) {
+                    if (!$redis->sIsMember('Trading:Btc:OrderIds' , $value->id) && !$info) $btcAPI->cancelOrder((int)$value->id, 'BTCCNY');
+                }
             }
 
             //卖订单处理
@@ -468,7 +470,9 @@ class Trading extends MY_Controller{
                     if ($value->status != "open") $redis->sRem('Reverse:Trading:Btc:OrderIds', $value->id);
                 }
 
-                if (!$info && !$redis->sIsMember('Reverse:Trading:Btc:OrderIds' , $value->id)) if((time() - $value->date) > 90) $btcAPI->cancelOrder((int)$value->id, 'BTCCNY');
+                if ($value->status == "open" && (time() - $value->date) > 90) {
+                    if(!$info && !$redis->sIsMember('Reverse:Trading:Btc:OrderIds' , $value->id)) $btcAPI->cancelOrder((int)$value->id, 'BTCCNY');
+                }
             }
         }
 
