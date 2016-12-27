@@ -148,6 +148,9 @@ class Trading extends MY_Controller{
 
         //已经买入的订单
         $redis = Rcache::init();
+        if ($redis->get("Is:Trading:BuyBtc")) die("Is trading\n");
+
+        $redis->set("Is:Trading:BuyBtc", 1);
 
         $orderId = 0;
         //先买策略
@@ -195,6 +198,7 @@ class Trading extends MY_Controller{
         }else{
             echo "First sell done\n";
         }
+        $redis->delete("Is:Trading:BuyBtc");
 
         echo "done\n"; 
     }
@@ -211,6 +215,9 @@ class Trading extends MY_Controller{
         if (!$price || !isset($price['sell'])) die('error: get price');
 
         $redis = Rcache::init();
+        if ($redis->get("Is:Trading:Sell:Btc")) die("Is trading\n");
+
+        $redis->set("Is:Trading:Sell:Btc", 1);
 
         $orderId = 0;
         //先买策略
@@ -257,6 +264,8 @@ class Trading extends MY_Controller{
         }else{
             echo "First sell is done\n";
         }
+
+        $redis->delete("Is:Trading:Sell:Btc");
 
         echo "done\n";
     }
