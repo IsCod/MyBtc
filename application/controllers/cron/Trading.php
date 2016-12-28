@@ -154,7 +154,7 @@ class Trading extends MY_Controller{
         if ($buy_deal_num < $this->max_deal_num) {
             $orderId = $btcAPI->placeOrder($price['buy'], $this->amount, 'BTCCNY');
 
-            if (is_int($orderId) && $orderId > 1) {
+            if (is_int($orderId) && $orderId > 0) {
                 $redis->sAdd('Trading:Btc:OrderIds', $orderId);
                 echo "First buy ok\n";   
             }
@@ -163,6 +163,7 @@ class Trading extends MY_Controller{
             echo "First buy done\n";
         }
 
+        $orderId = 0;
         //先卖策略
         if (count($redis->hGetAll('reverse:trans:buy:btc')) < $this->max_order_num) {
             $tran = $redis->lPop('reverse:trans:sell:btc');
@@ -364,7 +365,7 @@ class Trading extends MY_Controller{
                             break;
                     }
 
-                    if ($value->status != "open") $redis->sRem('Trading:Btc:OrderIds', $value->id);
+                    if ($value->status == "cancelled" || $value->status == "closed") $redis->sRem('Trading:Btc:OrderIds', $value->id);
                 }
 
                 //先卖策略
@@ -442,6 +443,7 @@ class Trading extends MY_Controller{
                         case 'cancelled':
                             if ($value->amount == 0 || $value->amount == $value->amount_original) continue;
                             $redis->rPush('reverse:trans:sell:btc', serialize($value));
+                            $redis->sRem('Reverse:Trading:Btc:OrderIds', $value->id);
                             break;
 
                         //成交的订单
@@ -458,8 +460,7 @@ class Trading extends MY_Controller{
                             # code...
                             break;
                     }
-
-                    if ($value->status != "open") $redis->sRem('Reverse:Trading:Btc:OrderIds', $value->id);
+                    if ($value->status == "cancelled" || $value->status == "closed") $redis->sRem('Reverse:Trading:Btc:OrderIds', $value->id);
                 }
             }
         }
