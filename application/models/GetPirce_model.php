@@ -5,7 +5,7 @@
 
 class GetPirce_model extends CI_Model {
 
-    private $market_depth_num = 20;//获取深度
+    private $market_depth_num = 15;//获取深度
 
     /**
     *获取ltc出售与买入价格
@@ -110,17 +110,16 @@ class GetPirce_model extends CI_Model {
 
         $return['bid'] = $market->market_depth_btccny->bid[0]->price;
         $return['ask'] = $market->market_depth_btccny->ask[0]->price;
-        $market_depth_num = 10;
 
         //获取市场深度
-        $market = $btcAPI->getMarketDepth($market_depth_num, 'BTCCNY');
+        $market = $btcAPI->getMarketDepth($this->market_depth_num, 'BTCCNY');
 
         $depth = array('ask' => array('all_amount' => 0, 'all_amount_cost' => 0), 'bid' => array('all_amount' => 0, 'all_amount_cost' => 0));
 
         $ask_max_amount = $bid_max_amount = 0;
         foreach ($market->market_depth->ask as $key => $value) {
             if ($key == 0) $depth['ask']['min_price'] = $value->price;
-            if ($key == ($market_depth_num -1)) $depth['ask']['max_price'] = $value->price;
+            if ($key == ($this->market_depth_num -1)) $depth['ask']['max_price'] = $value->price;
 
             $depth['ask']['all_amount'] += $value->amount;
             $depth['ask']['all_amount_cost'] += $value->price * $value->amount;
@@ -129,7 +128,7 @@ class GetPirce_model extends CI_Model {
         foreach ($market->market_depth->bid as $key => $value) {
             
             if ($key == 0) $depth['bid']['max_price'] = $value->price;
-            if ($key == ($market_depth_num -1)) $depth['bid']['min_price'] = $value->price;
+            if ($key == ($this->market_depth_num -1)) $depth['bid']['min_price'] = $value->price;
 
             $depth['bid']['all_amount'] += $value->amount;
             $depth['bid']['all_amount_cost'] += $value->price * $value->amount;

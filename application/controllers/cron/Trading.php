@@ -18,8 +18,9 @@ class Trading extends MY_Controller{
 
     private $max_order_num = 1;//最多同时在量的订单
     private $max_deal_num = 1;//未处理订单数大于该值不进行买入
-    private $min_balance_cny_num = 300;//账户中保持最低人民币
+    private $min_balance_cny_num = 800;//账户中保持最低人民币
     private $BuySellPro = 0.8;//先买策略与先卖策略比重buy/sell
+    private $amount = 0.01;//默认订单量
 
 
      //是否下订单
@@ -74,10 +75,8 @@ class Trading extends MY_Controller{
 
         $orderId = 0;
 
-        $amount = 10 * rand(80, 120) /100;
-
         $price['buy'] = $price['ask'];
-        $orderId = $btcAPI->placeOrder($price['buy'], $amount, 'LTCCNY');
+        $orderId = $btcAPI->placeOrder($price['buy'], $this->amount * 100, 'LTCCNY');
 
         if (!is_int($orderId) && $orderId) die("error: " . var_dump($orderId));
 
@@ -135,30 +134,26 @@ class Trading extends MY_Controller{
     }
 
     public function buybtc(){
-        $is_price_order = $this->IsPlaceOrder('BTCCNY');
-        if(!$is_price_order['buy']) die("done\n");
-
+        //加载BtcChinaApi
         include_once APPPATH . '/third_party/btcchina-api/BTCChinaLibrary.php';
         $btcAPI = new BTCChinaAPI();
 
-        //加载BtcChinaApi
+        $is_price_order = $this->IsPlaceOrder('BTCCNY');
+        if(!$is_price_order['buy']) die("done\n");
+
         $this->load->model('GetPirce_model');
         $price = $this->GetPirce_model->Btc();
         if (!$price || !isset($price['buy'])) die('error: get price');
-
+                $price['buy'] = 1000;
         //已经买入的订单
         $redis = Rcache::init();
-        if ($redis->get("Is:Trading:BuyBtc")) die("Is trading\n");
-
-        $redis->set("Is:Trading:BuyBtc", 1);
 
         $orderId = 0;
         //先买策略
-        if ($redis->sCard('Trading:Btc:OrderIds') < 1 && ($redis->lSize('trans:buy:btc') + count($redis->hGetAll('trans:sell:btc'))) < $this->max_deal_num) {
-            $amount = 0.06 * rand(80, 120) /100;
-            $amount = round($amount * $this->BuySellPro, 4);
+        $buy_deal_num = (int)$redis->sCard('Trading:Btc:OrderIds') + (int)$redis->lSize('trans:buy:btc') + count($redis->hGetAll('trans:sell:btc'));
 
-            $orderId = $btcAPI->placeOrder($price['buy'], $amount, 'BTCCNY');
+        if ($buy_deal_num < $this->max_deal_num) {
+            $orderId = $btcAPI->placeOrder($price['buy'], $this->amount, 'BTCCNY');
 
             if (is_int($orderId) && $orderId > 1) {
                 $redis->sAdd('Trading:Btc:OrderIds', $orderId);
@@ -198,7 +193,6 @@ class Trading extends MY_Controller{
         }else{
             echo "First sell done\n";
         }
-        $redis->delete("Is:Trading:BuyBtc");
 
         echo "done\n"; 
     }
@@ -214,10 +208,9 @@ class Trading extends MY_Controller{
         $price = $this->GetPirce_model->Btc();
         if (!$price || !isset($price['sell'])) die('error: get price');
 
-        $redis = Rcache::init();
-        if ($redis->get("Is:Trading:Sell:Btc")) die("Is trading\n");
+        $price['sell'] = 10000;
 
-        $redis->set("Is:Trading:Sell:Btc", 1);
+        $redis = Rcache::init();
 
         $orderId = 0;
         //先买策略
@@ -250,13 +243,12 @@ class Trading extends MY_Controller{
             echo "First buy is done\n";
         }
 
+
+        $sell_btc_num = (int)$redis->sCard('Reverse:Trading:Btc:OrderIds') + (int)$redis->lSize('reverse:trans:sell:btc') + count($redis->hGetAll('reverse:trans:buy:btc'));
+
         //先卖策略
-        if ($redis->sCard('Reverse:Trading:Btc:OrderIds') < 1 && ($redis->lSize('reverse:trans:sell:btc') + count($redis->hGetAll('reverse:trans:buy:btc'))) < $this->max_deal_num) {
-
-            $amount = 0.06 * rand(80, 120) /100;
-            $amount = round($amount / $this->BuySellPro, 4);
-
-            $orderId = $btcAPI->placeOrder($price['sell'], -$amount, 'BTCCNY');
+        if ($sell_btc_num < $this->max_deal_num) {
+            $orderId = $btcAPI->placeOrder($price['sell'], -$this->amount, 'BTCCNY');
             if (is_int($orderId) && $orderId > 1) {
                 $redis->sAdd('Reverse:Trading:Btc:OrderIds', $orderId);
                 echo "First sell ok\n";    
@@ -264,8 +256,6 @@ class Trading extends MY_Controller{
         }else{
             echo "First sell is done\n";
         }
-
-        $redis->delete("Is:Trading:Sell:Btc");
 
         echo "done\n";
     }
@@ -411,10 +401,6 @@ class Trading extends MY_Controller{
                             break;
                     }
                 }
-
-                if ($value->status == "open" && (time() - $value->date) > 90) {
-                    if (!$redis->sIsMember('Trading:Btc:OrderIds' , $value->id) && !$info) $btcAPI->cancelOrder((int)$value->id, 'BTCCNY');
-                }
             }
 
             //卖订单处理
@@ -477,10 +463,6 @@ class Trading extends MY_Controller{
                     }
 
                     if ($value->status != "open") $redis->sRem('Reverse:Trading:Btc:OrderIds', $value->id);
-                }
-
-                if ($value->status == "open" && (time() - $value->date) > 90) {
-                    if(!$info && !$redis->sIsMember('Reverse:Trading:Btc:OrderIds' , $value->id)) $btcAPI->cancelOrder((int)$value->id, 'BTCCNY');
                 }
             }
         }
