@@ -144,7 +144,6 @@ class Trading extends MY_Controller{
         $this->load->model('GetPirce_model');
         $price = $this->GetPirce_model->Btc();
         if (!$price || !isset($price['buy'])) die('error: get price');
-                $price['buy'] = 1000;
         //已经买入的订单
         $redis = Rcache::init();
 
@@ -207,8 +206,6 @@ class Trading extends MY_Controller{
         $this->load->model('GetPirce_model');
         $price = $this->GetPirce_model->Btc();
         if (!$price || !isset($price['sell'])) die('error: get price');
-
-        $price['sell'] = 10000;
 
         $redis = Rcache::init();
 
