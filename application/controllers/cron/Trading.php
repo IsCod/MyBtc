@@ -20,7 +20,7 @@ class Trading extends MY_Controller{
     private $max_deal_num = 1;//未处理订单数大于该值不进行买入
     private $min_balance_cny_num = 800;//账户中保持最低人民币
     private $BuySellPro = 0.8;//先买策略与先卖策略比重buy/sell
-    private $amount = 0.01;//默认订单量
+    private $amount = 0.04;//默认订单量
 
 
      //是否下订单
@@ -39,7 +39,7 @@ class Trading extends MY_Controller{
         // 保持最低人民币 通过客户端远程控制是否交易下一个较大的单使用户少于最低人民币
         if ($ret->balance->cny->amount < $this->min_balance_cny_num) {
             $result['buy'] = FALSE;
-            $result['sell'] = FALSE;
+            // $result['sell'] = FALSE;
         }
 
         return $result;
@@ -218,13 +218,13 @@ class Trading extends MY_Controller{
                 $tran = unserialize($tran);
 
                 //超过交易时间那么就止损
-                if ($tran->avg_price > $price['sell'] && (time() - $tran->date) < 3600) {
+                if ($tran->avg_price > $price['sell'] && (time() - $tran->date) < 60 * 10) {
                     $redis->rPush('trans:buy:btc', serialize($tran));
                 }else{
                     $amount = $tran->amount ? $tran->amount_original - $tran->amount : $tran->amount_original;//订单量
 
-                    //现在最高买的订单大于订单的价格4%的时候下单成交    
-                    if ($price['bid'] > ($tran->avg_price*1.01)) $price['sell'] = $price['bid'];
+                    //现在最高买的订单大于订单的价格0.1%的时候下单成交
+                    if ($price['bid'] > ($tran->avg_price*1.001)) $price['sell'] = $price['bid'];
 
                     $orderId = $btcAPI->placeOrder($price['sell'], -round(($amount  * 100)/100 , 4), 'BTCCNY');
 
@@ -245,6 +245,7 @@ class Trading extends MY_Controller{
         $sell_btc_num = (int)$redis->sCard('Reverse:Trading:Btc:OrderIds') + (int)$redis->lSize('reverse:trans:sell:btc') + count($redis->hGetAll('reverse:trans:buy:btc'));
 
         //先卖策略
+        /*
         if ($sell_btc_num < $this->max_deal_num) {
             $orderId = $btcAPI->placeOrder($price['sell'], -$this->amount, 'BTCCNY');
             if (is_int($orderId) && $orderId > 1) {
@@ -254,6 +255,7 @@ class Trading extends MY_Controller{
         }else{
             echo "First sell is done\n";
         }
+        */
 
         echo "done\n";
     }
@@ -277,7 +279,7 @@ class Trading extends MY_Controller{
                 switch ($value->status) {
                     //取消的订单
                     case 'cancelled':
-                        if ($value->amount == 0 || $value->amount == $value->amount_original) continue;
+                        if ($value->amount == $value->amount_original) continue;
                         $redis->rPush('trans:buy:ltc', serialize($value));
                         break;
 
@@ -309,9 +311,9 @@ class Trading extends MY_Controller{
                 switch ($value->status) {
                     //取消的订单
                     case 'cancelled':
-                        if($value->amount_original != $value->amount && $value->amount > 0) $info->amount += $value->amount_original - $value->amount;//交易过的数量
+                        $info->amount += $value->amount_original - $value->amount;
+                        if ($info->amount < $info->amount_original) $redis->rPush('trans:buy:ltc', serialize($info));
 
-                        if($info->amount < $value->amount_original) $redis->rPush('trans:buy:ltc', serialize($info));
                         $redis->hDel('trans:sell:ltc', $value->id);
                         break;
 
@@ -346,7 +348,7 @@ class Trading extends MY_Controller{
                     switch ($value->status) {
                         //取消的订单
                         case 'cancelled':
-                            if ($value->amount == 0 || $value->amount == $value->amount_original) continue;
+                            if ($value->amount == $value->amount_original) continue;
                             $redis->rPush('trans:buy:btc', serialize($value));
                             break;
 
@@ -357,7 +359,7 @@ class Trading extends MY_Controller{
 
                         //开放的订单
                         case 'open':
-                            if((time() - $value->date) > 90) $btcAPI->cancelOrder((int)$value->id, 'BTCCNY');
+                            if((time() - $value->date) > 60) $btcAPI->cancelOrder((int)$value->id, 'BTCCNY');
                             break;
 
                         default:
@@ -376,9 +378,8 @@ class Trading extends MY_Controller{
                     switch ($value->status) {
                         //取消的订单
                         case 'cancelled':
-                            if($value->amount_original != $value->amount && $value->amount > 0) $info->amount += $value->amount_original - $value->amount;//交易过的数量
-
-                            if($info->amount < $value->amount_original) $redis->rPush('reverse:trans:sell:btc', serialize($info));
+                            $info->amount += $value->amount_original - $value->amount;
+                            if($info->amount < $info->amount_original) $redis->rPush('reverse:trans:sell:btc', serialize($info));
                             $redis->hDel('reverse:trans:buy:btc', $value->id);
                             break;
 
@@ -391,7 +392,7 @@ class Trading extends MY_Controller{
 
                         //开放的订单
                         case 'open':
-                            if((time() - $value->date) > 120) $btcAPI->cancelOrder((int)$value->id, 'BTCCNY');
+                            if((time() - $value->date) > 90) $btcAPI->cancelOrder((int)$value->id, 'BTCCNY');
                             break;
 
                         default:
@@ -411,9 +412,8 @@ class Trading extends MY_Controller{
                     switch ($value->status) {
                         //取消的订单
                         case 'cancelled':
-                            if($value->amount_original != $value->amount && $value->amount > 0) $info->amount += $value->amount_original - $value->amount;//交易过的数量
-
-                            if($info->amount < $value->amount_original) $redis->rPush('trans:buy:btc', serialize($info));
+                            $info->amount += $value->amount_original - $value->amount;
+                            if($info->amount < $info->amount_original) $redis->rPush('trans:buy:btc', serialize($info));
                             $redis->hDel('trans:sell:btc', $value->id);
                             break;
 
@@ -441,9 +441,8 @@ class Trading extends MY_Controller{
 
                         //取消的订单
                         case 'cancelled':
-                            if ($value->amount == 0 || $value->amount == $value->amount_original) continue;
+                            if ($value->amount == $value->amount_original) continue;
                             $redis->rPush('reverse:trans:sell:btc', serialize($value));
-                            $redis->sRem('Reverse:Trading:Btc:OrderIds', $value->id);
                             break;
 
                         //成交的订单
