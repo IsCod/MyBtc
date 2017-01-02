@@ -5,7 +5,7 @@ function save()
 	if [[ $? -ne 0 ]];
 		then
 			echo "OrderManage is start..."
-			php index.php cron trading orderManage > /dev/null 2>&1
+			/usr/local/php/bin/php /Users/iscod/Data/MyBtc/index.php cron trading orderManage > /dev/null 2>&1
 		else
 			echo "OrderManage is runing...."
 	fi	
@@ -13,20 +13,20 @@ function save()
 
 function sell()
 {
-	ps -fe|grep orderManage |grep -v grep
+	ps -fe|grep sellbtc |grep -v grep
 	if [[ $? -ne 0 ]];
 		then
 			echo "SellBtc is start..."
-			php index.php cron trading sellbtc > /dev/null 2>&1
+			/usr/local/php/bin/php /Users/iscod/Data/MyBtc/index.php cron trading sellbtc > /dev/null 2>&1
 		else
 			echo "SellBtc is runing...."
 	fi
 
-	# ps -fe|grep orderManage |grep -v grep
+	# ps -fe|grep sellltc |grep -v grep
 	# if [[ $? -ne 0 ]];
 	# 	then
 	#		echo "SellLtc is start..."
-	# 		php index.php cron trading sellltc > /dev/null 2>&1
+	# 		/usr/local/php/bin/php /Users/iscod/Data/MyBtc/index.php cron trading sellltc > /dev/null 2>&1
 	# 	else
 	# 		echo "SellLtc is runing...."
 	# fi
@@ -34,20 +34,20 @@ function sell()
 
 function buy()
 {
-	ps -fe|grep orderManage |grep -v grep
+	ps -fe|grep buybtc |grep -v grep
 	if [[ $? -ne 0 ]];
 		then
 			echo "BuyBtc is start..."
-			php index.php cron trading buybtc > /dev/null 2>&1
+			/usr/local/php/bin/php /Users/iscod/Data/MyBtc/index.php cron trading buybtc > /dev/null 2>&1
 		else
 			echo "BuyBtc is runing...."
 	fi
 
-	# ps -fe|grep orderManage |grep -v grep
+	# ps -fe|grep buyltc |grep -v grep
 	# if [[ $? -ne 0 ]];
 	# 	then
 	# 		echo "BuyLtc is start..."
-	# 		php index.php cron trading buyltc > /dev/null 2>&1
+	# 		/usr/local/php/bin/php /Users/iscod/Data/MyBtc/index.php cron trading buyltc > /dev/null 2>&1
 	# 	else
 	# 		echo "BuyLtc is runing...."
 	# fi
