@@ -103,16 +103,12 @@ class GetPirce_model extends CI_Model {
         include_once APPPATH . '/third_party/btcchina-api/BTCChinaLibrary.php';
         $btcAPI = new BTCChinaAPI();
 
-        //获取市场深度
-        $market = $btcAPI->getMarketDepth(1, 'ALL');
-
         $return = array();
+        //获取市场深度
+        $market = $btcAPI->getMarketDepth($this->market_depth_num, 'BTCCNY');
 
         $return['bid'] = $market->market_depth_btccny->bid[0]->price;
         $return['ask'] = $market->market_depth_btccny->ask[0]->price;
-
-        //获取市场深度
-        $market = $btcAPI->getMarketDepth($this->market_depth_num, 'BTCCNY');
 
         $depth = array('ask' => array('all_amount' => 0, 'all_amount_cost' => 0), 'bid' => array('all_amount' => 0, 'all_amount_cost' => 0));
 
