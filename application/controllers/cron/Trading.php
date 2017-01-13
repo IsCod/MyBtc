@@ -163,7 +163,7 @@ class Trading extends MY_Controller{
                 echo "First buy ok\n";   
             }
 
-        }if else($buy_deal_num < $this->max_deal_num + 1 ){
+        }elseif($buy_deal_num < $this->max_deal_num + 1 ){
             $orderId = $btcAPI->placeOrder($price['buy'] * 0.92, $this->amount, 'BTCCNY');
 
             if (is_int($orderId) && $orderId > 0) {
