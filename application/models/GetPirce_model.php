@@ -107,8 +107,8 @@ class GetPirce_model extends CI_Model {
         //获取市场深度
         $market = $btcAPI->getMarketDepth($this->market_depth_num, 'BTCCNY');
 
-        $return['bid'] = $market->market_depth_btccny->bid[0]->price;
-        $return['ask'] = $market->market_depth_btccny->ask[0]->price;
+        $return['bid'] = $market->market_depth->bid[0]->price;
+        $return['ask'] = $market->market_depth->ask[0]->price;
 
         $depth = array('ask' => array('all_amount' => 0, 'all_amount_cost' => 0), 'bid' => array('all_amount' => 0, 'all_amount_cost' => 0));
 
