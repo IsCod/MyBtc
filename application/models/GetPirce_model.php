@@ -148,8 +148,8 @@ class GetPirce_model extends CI_Model {
         }
         //卖单大于买单5倍
         if ($ask_bid_market && $ask_bid_market > 1) {
-            $return['buy'] -= 0.1*$ask_bid_market;
-            $return['sell'] -= 0.05*$ask_bid_market;
+            $return['buy'] -= $ask_bid_market;
+            $return['sell'] -= 0.5*$ask_bid_market;
         }
 
         //买单大于当前市场的最高价格以最高价格买进

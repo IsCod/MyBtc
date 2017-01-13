@@ -144,8 +144,12 @@ class Trading extends MY_Controller{
         $this->load->model('GetPirce_model');
         $price = $this->GetPirce_model->Btc();
         if (!$price || !isset($price['buy'])) die('error: get price');
+
         //已经买入的订单
         $redis = Rcache::init();
+
+        $stop_loss_ttl = $redis->ttl('sell:btc:stop:loss');
+        if ($stop_loss_ttl > 0) $price['buy'] = 0.995 * $price['buy'];
 
         $orderId = 0;
         //先买策略
@@ -161,6 +165,13 @@ class Trading extends MY_Controller{
 
         }else{
             echo "First buy done\n";
+        }
+
+        $orderId = $btcAPI->placeOrder($price['buy'] * 0.99, $this->amount, 'BTCCNY');
+
+        if (is_int($orderId) && $orderId > 0) {
+            $redis->sAdd('Trading:Btc:OrderIds', $orderId);
+            echo "First buy ok\n";   
         }
 
         $orderId = 0;
@@ -221,6 +232,7 @@ class Trading extends MY_Controller{
                 if ($tran->avg_price > $price['sell'] && (time() - $tran->date) < 60 * 10) {
                     $redis->rPush('trans:buy:btc', serialize($tran));
                 }else{
+                    if(time() - $tran->date > 60 * 10) $redis->setex('sell:btc:stop:loss', 60, 1);
                     $amount = $tran->amount ? $tran->amount_original - $tran->amount : $tran->amount_original;//订单量
 
                     //现在最高买的订单大于订单的价格0.1%的时候下单成交
