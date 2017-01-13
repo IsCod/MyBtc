@@ -164,15 +164,16 @@ class Trading extends MY_Controller{
             }
 
         }else{
+            $orderId = $btcAPI->placeOrder($price['buy'] * 0.92, $this->amount, 'BTCCNY');
+
+            if (is_int($orderId) && $orderId > 0) {
+                $redis->sAdd('Trading:Btc:OrderIds', $orderId);
+                echo "First buy ok\n";   
+            }
             echo "First buy done\n";
         }
 
-        $orderId = $btcAPI->placeOrder($price['buy'] * 0.92, $this->amount, 'BTCCNY');
 
-        if (is_int($orderId) && $orderId > 0) {
-            $redis->sAdd('Trading:Btc:OrderIds', $orderId);
-            echo "First buy ok\n";   
-        }
 
         $orderId = 0;
         //先卖策略
