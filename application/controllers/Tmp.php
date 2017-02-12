@@ -6,4 +6,6 @@ class Tmp extends CI_Controller {
         parent::__construct(TRUE);
         date_default_timezone_set('Asia/Shanghai');
     }
+    
+    
 }
